@@ -1,0 +1,263 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 18 10:39:45 2019
+
+@author: eleni
+"""
+''''
+1.Καλούμε όλες τις απαραίτητες βιβλιοθήκες 
+''''
+import nltk
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+import pandas as pd
+
+''''
+2. Εισάγουμε σαν dataframe table το αρχείο txt και με την συνάρτηση desribe() 
+παρατηρούμε τα στατιστικά χαρακτηριστικά των numeric μεταβλητών, επειδή κάποιο μήνυμα 
+δεν είχε εισαχθεί κανονικά το διορθώνουμε με την εντολή loc(). Με την εντολή groupby βλέπουμε τα στατιστικά χαρακτηριστικά 
+ανάμεσα στα ειρωνικά και μη ειρβνικά μηνύματα
+''''
+
+messages=pd.read_table('C:/Users/eleni/Desktop/python/Python-Data-Science-and-Machine-Learning-Bootcamp/Python-Data-Science-and-Machine-Learning-Bootcamp/Machine Learning Sections/Natural-Language-Processing/SemEval2018-T3-train-taskA.txt')
+messages.head()
+messages.describe()
+messages.loc[3024:3024,'Tweet text']="@myrcurial: @amz__123 Aaaaaamd what time is your bedtime? >better  tweet Dad at night from my house. I don't want to get in trouble!"
+messages.iloc[3024]['Tweet text']
+messages.groupby('Label').describe()
+''''
+3.Δημιουργούμε μία νέα μεταβλητή/στήλη (feature) με το μέγεθος του κάθε μηνύματος 
+''''
+messages['length']=messages['Tweet text'].apply(len)
+messages.head()
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+messages['length'].plot(bins=50,kind='hist')
+messages.length.describe()
+messages[messages['length']==736]['Tweet text'].iloc[0]
+''''
+4.Για να συγκρίνουμε την κατανομή των tweeter παρουσιαζομαι ιστογράμματα στο μέγεθος των μηνυμάτων στις δύο κατηγορίες των ειρωνικών και μη ειρωνικών
+Από τα ιστογράμματα φαίνεται ότι η κατανομή των ειρωνικών tweets είναι πιο πλατύκυρτη, δηλαδή πιο απλωμένες οι παρατηρήσεις γύρω από τη μέση τιμή.
+Ακόμη θα μπορούσαμε να πούμε πως τα μη ειρωνικά μηνύματα έχουν πιο πολλούς χαρκτήρες σε σχέση με τα ειρωνικά, κάτι που επιβεβαιώνεται και από την συνάρτηση describe.
+Ακόμη αξίζει να σημειωθεί ότι το δείγμα μπορεί να χαρακτηριστεί ως 'balance' καθώς αποτελείται από ίδιο πλήθος ειρωνικών και μη ειρωνικών μηνυμάτων.
+''''
+messages.hist(column='length',by='Label',bins=50)
+messages.groupby('Label')['length'].describe()
+
+''''
+5.Aφαιρούμε από κάθε μήνυμα το λινκ http/: ή το αντίστοιχο retweet το οποίο ξεκινάει με @
+Καλούμε τη βιβλιοθήκη re
+(Υπάρχει βιβλιοθήκη η οποία πραγματοποιεί απευθείας όλα τα πραπάνω αλλά χρειάζεται python 2.7)
+''''
+import re 
+for i in range(len(messages['Tweet text'])):
+    messages['Tweet text'][i]=re.sub(r"http\S+", "",messages['Tweet text'][i])
+messages['Tweet text'].head()
+
+for i in range(len(messages['Tweet text'])):
+    messages['Tweet text'][i]=re.sub(r"@\S+ ", "",messages['Tweet text'][i])
+messages['Tweet text'].head()
+
+
+''''
+6.Δημιουργούμε μία νέα στήλη/μεταβλητή/feature με την οποία ξεχωρίζουμε τα hashtags(#) από το κάθε tweet
+
+''''
+from nltk.tokenize import word_tokenize
+messages['hashtags']=messages['Tweet text']
+def has(m):
+    z=[]
+    for c,word in enumerate(word_tokenize(m),1):
+        has=[] 
+        if word=='#':
+            has=word_tokenize(m)[c]
+            z.append(has)
+    z=" ".join(z)
+    return z   
+has('mess is mesh #ha #not') 
+messages['hashtags'].apply(has)#εδώ έχουμε ένα θέμα και δεν τρέχει για όλη τη στήλη
+''''
+7.Text Pre processing_Bag of Words(Tokenize)
+Μετρέπουμε το κάθε μήνυμα σε διάνυσμα, αφού αρχικά αφαιρέσουμε όλα τα περιττά
+στοιχεία που μπορεί να περιέχει ένα Tweet, όπως για πράδειγμα τα σημεία στίξης
+και με τη συνάρτηση του stopwords αφαιρούμε και λέξεις οι οποίες δεν έχουν ιδιαίτερη σημασία 
+στο σκοπό του text. Αμέσως μετά δημιουργούμε μία συνάρτηση που κάνει nopunctuation και stopwords
+μετατρέποντας όμως το κάθε μήνυμα σε λίστα 
+''''
+#remove_punctuations
+import string 
+nopunctuation=[]
+for i in range(len(messages['Tweet text'])):
+    mess=messages['Tweet text'][i]
+    nopunc=[char for char in mess if char not in string.punctuation]
+    nopunc=''.join(nopunc)
+    nopunctuation.append(nopunc)
+nopunctuation=pd.DataFrame(nopunctuation)
+messages['nopun']=pd.DataFrame(nopunctuation)
+
+messages['nopun'].head()     
+   
+
+#remove stopwords
+from nltk.corpus import stopwords
+stopwords.words('english')[0:10]
+messages['nopun'][3].split()
+clean_mess=[word for word in messages['nopun'][3].split() if word.lower() not in stopwords.words('english')]
+clean_mess
+
+#function tre_process Tokenize,μετά πό αυτό το βήμα θα έχουμε λέξεις που έχουν ουσιαστική μόνο σημασία γνωστές και ως tokens
+def text_process(mess):
+       """
+    Takes in a string of text, then performs the following:
+    1. Remove all punctuation
+    2. Remove all stopwords
+    3. Returns a list of the cleaned text
+    """
+    #Ελέγχει τους χαρακτήρες για να δει αν έχουν σημεία στίξης 
+
+    nopunc=[char for char in mess if char not in string.punctuation]
+    #δημιουργεί πάλι σε μορφ΄η string το μήνυμα
+    nopunc=''.join(nopunc)
+    
+    nopunc=[word for word in nopunc.split() if word.lower() not in stopwords.words('english')]
+    return nopunc
+
+''''
+8.Stemming .
+Με τη συνάρτηση PorterStemmer μειώνουμε τη συχνότητα των λέξεων που συνήθβς λόγω συντομίας έχουν την ίδια σημασία
+για παράδειγμα cats,cat. Το αποτέλεσμα είναι μία λίστα και αργότερα το μετατρέπουμε σε στήλη/μεταβλητή (feature) στο αρχικο Dataframe messages
+''''
+from nltk.stem.porter import PorterStemmer
+corpus = []
+for i in range(0, 3817):
+    review = re.sub('[^a-zA-Z]', ' ',messages['nopun'][i])
+    rereview = review.lower()
+    review = review.split()
+    ps = PorterStemmer()
+    review=[ps.stem(word) for word in review if not word in set(stopwords.words('english'))]
+    review= ' '.join(review)
+    corpus.append(review)
+messages['corpus']=pd.DataFrame(corpus)
+
+''''
+9.Vectorization
+Εχοντας τα μντ σε λίστες tokens πρέπει να μετατραπούν από tokens σε διανσυσματα μέσω της sklearn βιβλιοθήκης
+Θα ακολουθήσουν τρία βήματα γνωστά και ως Bag of Words
+    i.term frequency, υπολογίζει τη συχνότητα που εμφανίζεται το κάθε μήνυμα(CountVectorizer)
+    ii.υπολογίζουμε τα weights των λέξεων
+    iii.Normalize τα διανύσματα 
+    
+9.i. Αυτό το μοντέλο θα μετατρέψει μια συλλογή εγγράφων κειμένου σε μια μήτρα/matrix  μετρήσεων
+ συμβόλων.Μπορούμε να φανταστούμε αυτό ως μια μήτρα δύο διαστάσεων.(2x2)
+ Όπου η 1-διάσταση δλδ η κάθε στήλη έχει το κάθε μήνυμα που  είναι ολόκληρο το λεξιλόγιο  
+ και η άλλη διάσταση δλδ η καθε γραμμή  την κάθε λέξη στην περίπτωση αυτή μια στήλη ανά μήνυμα κειμένου.
+ Το αποτέλεσμα είναι ο πίνακας sparse
+''''
+from sklearn.feature_extraction.text import CountVectorizer
+bow_transformer=CountVectorizer(analyzer=text_process).fit(messages['corpus'])
+#εμφανίζουμε το μέγεθος των διαφορετικ΄ών λέξεων
+print(len(bow_transformer.vocabulary_))
+message4 = messages['corpus'][35]#ενα παράδειγμα για το πόσες φορες εμφανίζεται κάθε λέξη σε 1 μνμ
+print(message4)
+bow4 = bow_transformer.transform([message4])
+print(bow4)
+print(bow4.shape)
+print(bow_transformer.get_feature_names()[3280])
+print(bow_transformer.get_feature_names()[7180])
+#κανουμε την ίδια διαδικάσιά για όλο το dataframe
+messages_bow = bow_transformer.transform(messages['corpus'])
+print('Shape of Sparse Matrix: ', messages_bow.shape)
+print('Amount of Non-Zero occurences: ', messages_bow.nnz)
+#Ο πίνακας sparse εχει διασταση 8.367Χ3817
+#Το πλήθος των μη μηδενικών στοιχείων είναι 27851
+sparsity = (100.0 * messages_bow.nnz / (messages_bow.shape[0] * messages_bow.shape[1]))
+print('sparsity: {}'.format(sparsity))
+#sparsity = 0.0872065015576526 δείχνει το πλήθος των μηδενικών στοιχείων σε σχέση με τα μη μηδενικά
+
+''''
+10.TF-IDF
+Είναι μία διαδικασία που σχετίζεται με το Information retrieval & text-mining.
+Στην ουσία υπολογίζεται η σημαντικότητα κάθε λέξης μέσα σε όλο το corpus
+''''
+
+from sklearn.feature_extraction.text import TfidfTransformer
+
+tfidf_transformer=TfidfTransformer().fit(messages_bow)
+tfidf4=tfidf_transformer.transform(bow4)
+print(tfidf4)
+#example word frequency of the word not
+tfidf_transformer.idf_[bow_transformer.vocabulary_['u']]
+
+''''
+11.Training a model
+''''
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+
+messages_tfidf=tfidf_transformer.transform(messages_bow)
+
+#Multinomial
+irony_detect_model1=MultinomialNB().fit(messages_tfidf,messages['Label'])
+
+#suport vector machine
+svm=SVC()
+irony_detect_model2=svm.fit(messages_tfidf,messages['Label'])
+irony_detect_model2.predict(tfidf4)[0]
+
+#logistic Regression
+logisticregression=LogisticRegression()
+irony_detect_model3=logisticregression.fit(messages_tfidf,messages['Label'])
+
+
+#an example
+print('predicted:', irony_detect_model3.predict(tfidf4)[0])
+print('expected:', messages.Label[3])
+
+#Model evaluation
+Predictions_model_1=irony_detect_model1.predict(messages_tfidf)
+print(Predictions_model_1)
+
+Predictions_model_2=irony_detect_model2.predict(messages_tfidf)
+print(Predictions_model_2)
+
+Predictions_model_3=irony_detect_model3.predict(messages_tfidf)
+print(Predictions_model_3)
+
+
+
+from sklearn.metrics import classification_report
+print(classification_report(messages['Label'],Predictions_model_1))
+print(classification_report(messages['Label'],Predictions_model_2))
+print(classification_report(messages['Label'],Predictions_model_3))
+
+
+from sklearn.metrics import accuracy_score
+print(accuracy_score(messages['Label'],Predictions_model_1))
+print(accuracy_score(messages['Label'],Predictions_model_2))
+print(accuracy_score(messages['Label'],Predictions_model_3))
+
+
+#Train and Test split
+from sklearn.model_selection import train_test_split
+
+msg_train, msg_test, label_train, label_test = \
+train_test_split(messages['corpus'], messages['Label'], test_size=0.2)
+
+print(len(msg_train), len(msg_test), len(msg_train) + len(msg_test))
+
+#Δημιουργούμε μία συνάρτηση pipeline για να ενώσουμε ολα τα παραπάνω βήματα/συναρτήσεις σε μία
+from sklearn.pipeline import Pipeline
+
+pipeline = Pipeline([
+    ('bow', CountVectorizer(analyzer=text_process)),  # strings to token integer counts
+    ('tfidf', TfidfTransformer()),  # integer counts to weighted TF-IDF scores,
+    ('classifier2',SVC()),
+    ('classifier3',LogisticRegression()),
+    ])#δεν το τρεχει
+    
+pipeline.fit(msg_train,label_train)
+predictions = pipeline.predict(msg_test)
+print(classification_report(predictions,label_test))
